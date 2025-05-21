@@ -23,16 +23,43 @@ import type { SourceDataType, TableDataType } from "./types";
 const tableData: TableDataType[] = (
   sourceData as unknown as SourceDataType[]
 ).map((dataRow, index) => {
-  const person = `${dataRow?.employees?.firstname} - ...`;
+  const employee = dataRow?.employees;
+  const external = dataRow?.externals;
+  const team = dataRow?.teams;
+
+  const now = new Date();
+  const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthStr = prevMonth.toISOString().split("T")[0];
+
+  const person = `${employee?.firstname ?? external?.firstname ?? team?.name} ${
+      employee?.lastname ?? external?.lastname ?? ""
+  }`.trim();
+
+  const utilisation = employee?.workforceUtilisation ?? external?.workforceUtilisation ?? team?.workforceUtilisation;
+
+  const getUtilisationByMonth = (month: string) => {
+      return utilisation?.lastThreeMonthsIndividually?.find(
+          (element: { month: string; utilisationRate: string }) => element.month === month
+      )?.utilisationRate ?? "0";
+  };
+
+  const getNetEarningsPrevMonth = () => {
+      const matchingQuarter = utilisation?.quarterEarnings?.find(
+          (element: { earnings: number; start: string; name: string; end: string }) =>
+              prevMonthStr >= element.start && prevMonthStr <= element.end
+      );
+
+      return matchingQuarter?.earnings ?? "0";
+  };
 
   const row: TableDataType = {
-    person: `${person}`,
-    past12Months: `past12Months ${index} placeholder`,
-    y2d: `y2d ${index} placeholder`,
-    may: `may ${index} placeholder`,
-    june: `june ${index} placeholder`,
-    july: `july ${index} placeholder`,
-    netEarningsPrevMonth: `netEarningsPrevMonth ${index} placeholder`,
+      person: `${person}`,
+      past12Months: `${parseFloat(utilisation?.utilisationRateLastTwelveMonths ?? "0")}%`,
+      y2d: `${parseFloat(utilisation?.utilisationRateYearToDate ?? "0")}%`,
+      may: `${parseFloat(getUtilisationByMonth("May"))}%`,
+      june: `${parseFloat(getUtilisationByMonth("June"))}%`,
+      july: `${parseFloat(getUtilisationByMonth("July"))}%`,
+      netEarningsPrevMonth: `${getNetEarningsPrevMonth()} EUR`,
   };
 
   return row;
